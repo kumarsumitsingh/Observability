@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend-app
+  labels:
+    name: frontend
+  annotations: 
+    sidecar.jaegertracing.io/inject: "true"
+    prometheus.io/port: frontendport
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      containers:
+      - name: frontend
+        # We advise you to build, push and use your own image, instead of using instructor's image.
+        image: ghcr.io/jasonsmithio/myfrontend:v1
+        ports:
+        - containerPort: 8080
+          name: frontendport
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-service
+spec:
+  selector:
+    app: frontend
+  ports:
+    - port: 8080
+      targetPort: 8080
+  type: LoadBalancer
