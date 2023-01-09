@@ -18,12 +18,15 @@ spec:
         app: frontend
     spec:
       containers:
-      - name: frontend
-        # We advise you to build, push and use your own image, instead of using instructor's image.
-        image: ghcr.io/jasonsmithio/myfrontend:v1
+      - env:
+        - name: JAEGER_AGENT_HOST
+          value: simplest-agent.observability.svc.cluster.local
+        image: sumitkumarsingh/obsfrontend:latest
+        imagePullPolicy: Always
+        name: frontend
         ports:
         - containerPort: 8080
-          name: frontendport
+      restartPolicy: Always
 ---
 apiVersion: v1
 kind: Service
@@ -36,3 +39,41 @@ spec:
     - port: 8080
       targetPort: 8080
   type: LoadBalancer
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    prometheus.io/port: "9090"
+    prometheus.io/scrape: "true"
+  name: frontend-service
+  labels:
+    app: frontend
+spec:
+  selector:
+    app: frontend
+  ports:
+    - name: frontend
+      port: 8080
+      targetPort: 8080
+  type: LoadBalancer
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: frontend
+  namespace: monitoring
+  labels:
+    app: frontend
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app: frontend
+  endpoints:
+  - port: frontend
+    path: /metrics
+    interval: 15s
+  namespaceSelector:
+    matchNames:
+    - default

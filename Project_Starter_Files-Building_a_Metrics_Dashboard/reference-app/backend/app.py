@@ -47,11 +47,6 @@ class InvalidHandle(Exception):
         error_message['message'] = self.message
         return error_message
 
-@app.route('/error')
-@by_endpoint_counter
-def oops():
-    return ':(', 500    
-
 def init_tracer(service):
     logging.getLogger('').handlers = []
     logging.basicConfig(format='%(message)s', level=logging.DEBUG)
@@ -72,6 +67,15 @@ def init_tracer(service):
     return config.initialize_tracer()
 
 tracer = init_tracer('backend')
+@app.route('/error')
+@by_endpoint_counter
+def oops():
+    name=None
+    if name==None:
+        with tracer.start_span('500-Error'):
+            raise InvalidHandle("Internal server error",500) 
+
+
 
 @app.errorhandler(InvalidHandle)
 def handle_invalid_usage(error):
@@ -82,7 +86,8 @@ def handle_invalid_usage(error):
 @app.route('/foo')
 @by_endpoint_counter
 def get_error():
-    raise InvalidHandle('error occur', status_code=410)
+    with tracer.start_span('410-Error'):
+        raise InvalidHandle('access to the target resource is no longer available at the origin server', status_code=410)
 
 @app.route('/')
 @by_endpoint_counter
